@@ -369,6 +369,17 @@ body {
   border-radius: 2px;
   background: linear-gradient(90deg, var(--accent), #1ea9d8);
   transition: width 180ms ease-out;
+  /* Draw the bar in from the left on (re)analyze — the schematic "renders". */
+  transform-origin: left center;
+  animation: bar-draw 200ms ease-out both;
+}
+@keyframes bar-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .layer.rebuilds .bar {
   background: linear-gradient(90deg, var(--danger), #d84a4a);
@@ -418,6 +429,17 @@ body {
   padding: 14px 16px;
   box-shadow: var(--shadow);
   transition: transform 160ms ease-out;
+  animation: note-in 220ms ease-out both;
+}
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .suggestion:hover {
   transform: translateX(2px);
