@@ -7,7 +7,7 @@
 // that must produce nothing (no false positives).
 
 import type { Layer } from './types';
-import { isBroadCopy } from './layers';
+import { isBroadCopy, copySources } from './layers';
 
 export type Severity = 'high' | 'medium' | 'low';
 
@@ -38,6 +38,7 @@ export function buildSuggestions(layers: Layer[]): Suggestion[] {
     ...detectCopyBeforeInstall(layers),
     ...detectUncleanedApt(layers),
     ...detectOrderSensitivity(layers),
+    ...detectAvoidableAdd(layers),
   ];
   return out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
@@ -140,6 +141,37 @@ export function detectUncleanedApt(layers: Layer[]): Suggestion[] {
         `The install on line ${i.line} does not remove \`/var/lib/apt/lists/*\` in the same ` +
         `RUN, so those lists ship in the image. Append ` +
         `\`&& rm -rf /var/lib/apt/lists/*\` to trim the layer.`,
+    });
+  }
+  return out;
+}
+
+/** Sources that legitimately justify ADD over COPY: remote URLs and archives. */
+const ARCHIVE_EXT = /\.(tar|tar\.gz|tgz|tar\.bz2|tar\.xz|tar\.zst|gz|bz2|xz)$/i;
+
+/**
+ * `ADD` of a plain local file where `COPY` is the right tool. ADD has two
+ * surprising behaviors — fetching URLs and auto-extracting archives — so using
+ * it for ordinary files is a footgun. Remote URLs and archive sources are left
+ * alone; those are ADD's legitimate uses.
+ */
+export function detectAvoidableAdd(layers: Layer[]): Suggestion[] {
+  const out: Suggestion[] = [];
+  for (const l of layers) {
+    const i = l.instruction;
+    if (i.keyword !== 'ADD') continue;
+    const sources = copySources(i.args);
+    if (sources.some((s) => /^https?:\/\//.test(s))) continue; // URL fetch is ADD-only
+    if (sources.some((s) => ARCHIVE_EXT.test(s))) continue; // auto-extraction is intentional
+    out.push({
+      id: 'avoidable-add',
+      severity: 'low',
+      title: 'ADD used where COPY is clearer and safer',
+      line: i.line,
+      detail:
+        `Line ${i.line} uses \`ADD\` for a local, non-archive path. ADD can fetch URLs and ` +
+        `auto-extract archives, which surprises readers; for plain files prefer \`COPY\` — it is ` +
+        `explicit and behaves identically here.`,
     });
   }
   return out;
