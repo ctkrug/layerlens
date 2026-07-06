@@ -6,7 +6,7 @@
 // or restore cache hits. All static; no build is ever run.
 
 import type { Instruction, Layer } from './types';
-import { buildLayers, totalWeight } from './layers';
+import { buildLayers, totalWeight, isBroadCopy } from './layers';
 import { parseDockerfile } from './parser';
 
 export type Severity = 'high' | 'medium' | 'low';
@@ -38,7 +38,6 @@ export interface Analysis {
   readonly stageCount: number;
 }
 
-const BROAD_COPY = /(^|\s)(\.|\*|\.\/)(\s|$)/;
 const DEP_INSTALL = /\b(npm\s+(ci|install|i)|yarn\s+install|pnpm\s+(install|i)|pip\s+install|bundle\s+install|go\s+mod\s+download|cargo\s+fetch)\b/;
 
 /** Analyze raw Dockerfile source end to end. */
@@ -55,7 +54,7 @@ export function analyzeLayers(
   stageCount: number,
 ): Analysis {
   const firstBroadCopy = layers.findIndex(
-    (l) => (l.instruction.keyword === 'COPY' || l.instruction.keyword === 'ADD') && BROAD_COPY.test(l.instruction.args),
+    (l) => (l.instruction.keyword === 'COPY' || l.instruction.keyword === 'ADD') && isBroadCopy(l.instruction.args),
   );
 
   const annotated: LayerAnalysis[] = layers.map((l) => ({
@@ -98,7 +97,7 @@ function buildSuggestions(layers: Layer[]): Suggestion[] {
 function detectCopyBeforeInstall(instr: Instruction[]): Suggestion[] {
   const out: Suggestion[] = [];
   const broadCopyIdx = instr.findIndex(
-    (i) => (i.keyword === 'COPY' || i.keyword === 'ADD') && BROAD_COPY.test(i.args),
+    (i) => (i.keyword === 'COPY' || i.keyword === 'ADD') && isBroadCopy(i.args),
   );
   if (broadCopyIdx < 0) return out;
 

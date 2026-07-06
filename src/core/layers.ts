@@ -27,8 +27,23 @@ const HEAVY_INSTALL_PATTERNS: RegExp[] = [
   /\bmvn\b|\bgradle\b/,
 ];
 
-/** COPY/ADD of a broad context (dot or wildcard) tends to be large. */
-const BROAD_COPY = /(^|\s)(\.|\*|\.\/)(\s|$)/;
+/**
+ * Extract the source operands of a COPY/ADD, dropping flags (`--from=`, etc.)
+ * and the trailing destination. `COPY a b c dest` -> [a, b, c].
+ */
+export function copySources(args: string): string[] {
+  const tokens = args.split(/\s+/).filter((t) => t.length > 0 && !t.startsWith('--'));
+  if (tokens.length <= 1) return tokens;
+  return tokens.slice(0, -1);
+}
+
+/**
+ * True when a COPY/ADD pulls in a broad context — a `.`/`./` source or a glob.
+ * Only the sources are considered, never the destination (a `.` dest is normal).
+ */
+export function isBroadCopy(args: string): boolean {
+  return copySources(args).some((s) => s === '.' || s === './' || s.includes('*'));
+}
 
 /**
  * Classify an instruction as a filesystem or metadata layer. In real Docker,
@@ -59,7 +74,7 @@ export function estimateWeight(inst: Instruction): { weight: SizeWeight; note: s
   }
 
   // COPY / ADD
-  if (BROAD_COPY.test(args)) {
+  if (isBroadCopy(args)) {
     return { weight: 7, note: 'Copies a broad context (`.`/glob) — often the largest layer.' };
   }
   if (inst.keyword === 'ADD' && /^https?:\/\//.test(args)) {
