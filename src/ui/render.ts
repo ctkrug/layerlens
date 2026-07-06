@@ -66,7 +66,9 @@ function crossStageLabel(a: Analysis, l: LayerAnalysis, names: Map<string, numbe
 /** The layer stack, grouped and labeled by build stage. */
 export function renderStack(a: Analysis): string {
   if (a.layers.length === 0) return renderEmptyStack();
-  const maxWeight = Math.max(1, ...a.layers.map((l) => l.weight));
+  // reduce, not Math.max(...spread): a huge stack would overflow the argument
+  // limit; floor at 1 so barPercent never divides by zero.
+  const maxWeight = a.layers.reduce((max, l) => Math.max(max, l.weight), 1);
   const names = stageNames(a.layers);
   const stages = [...new Set(a.layers.map((l) => l.instruction.stage))].sort((x, y) => x - y);
 

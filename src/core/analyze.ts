@@ -60,7 +60,9 @@ export function sourceEditSeeds(layers: Layer[]): number[] {
 /** Weight of only the final stage's layers — what the shipped image carries. */
 export function finalStageWeight(layers: Layer[]): number {
   if (layers.length === 0) return 0;
-  const finalStage = Math.max(...layers.map((l) => l.instruction.stage));
+  // reduce, not Math.max(...spread): a huge layer array would overflow the
+  // call-argument limit and throw RangeError.
+  const finalStage = layers.reduce((max, l) => Math.max(max, l.instruction.stage), 0);
   return layers
     .filter((l) => l.instruction.stage === finalStage)
     .reduce((sum, l) => sum + l.weight, 0);
