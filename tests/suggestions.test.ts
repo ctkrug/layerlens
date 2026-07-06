@@ -39,6 +39,16 @@ describe('order-sensitivity', () => {
     expect(s[0].estimatedSaving).toBeGreaterThan(0);
   });
 
+  it('detects copy-before-install in the final stage even after an earlier broad COPY', () => {
+    // Stage 0 has a broad COPY but no dependency install; the real
+    // copy-before-install is in the final stage and must still be flagged.
+    const src = `FROM node AS deps\nCOPY . .\nRUN echo hi\n\nFROM node\nCOPY . .\nRUN npm ci\n`;
+    const s = detectCopyBeforeInstall(buildLayers(parseDockerfile(src).instructions));
+    expect(s).toHaveLength(1);
+    expect(s[0].id).toBe('copy-before-install');
+    expect(s[0].line).toBe(6); // the final-stage broad COPY
+  });
+
   it('does not double-report a dependency install (copy-before-install owns it)', () => {
     const src = `FROM node:20\nCOPY . .\nRUN npm ci\n`;
     expect(ids(src)).toContain('copy-before-install');
