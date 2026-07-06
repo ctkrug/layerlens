@@ -26,7 +26,7 @@ core stage is independently unit-tested.
 |------|----------------|
 | `types.ts` | Domain types: `Instruction`, `Layer`, `ParsedDockerfile`. |
 | `parser.ts` | Text → `Instruction[]`. Joins line continuations, honors the `escape` directive, drops comments, tracks multi-stage `FROM` boundaries. Total (never throws; malformed input → warnings). |
-| `layers.ts` | `Instruction` → `Layer` with a heuristic relative **size weight** (package installs and broad copies dominate; metadata ≈ 0). Also `isBroadCopy`, `copySources`. |
+| `layers.ts` | `Instruction` → `Layer` with a heuristic relative **size weight** (package installs and broad copies dominate; metadata ≈ 0). Also `isBroadCopy`, `copySources`, and `baseImageRef` (the `FROM` image, skipping `--platform`/flags). |
 | `cascade.ts` | `computeCascade(layers, seeds)` — the cache-invalidation model: downstream within a stage, and across stages via `COPY --from` edges. Shared by the metric and the UI hover sweep. |
 | `suggestions.ts` | The ranked fix ruleset. Each detector is pure and named-exported for testing. Rules: `copy-before-install`, `apt-no-clean`, `order-sensitivity`, `avoidable-add`, `floating-base-image`, `missing-dockerignore`. |
 | `analyze.ts` | Orchestrates the pipeline into an `Analysis`: annotated layers, `imageWeight` (final stage only), `wastedCacheRatio`, the source-edit cascade, ranked suggestions. |
@@ -48,16 +48,19 @@ Dockerfile; `src/examples.ts` is the one-click gallery (also used as fixtures).
 ## Run & test
 
 ```bash
-npm run dev        # vite dev server
-npm test           # vitest (pure core + UI renderers + happy-dom workbench integration)
-npm run typecheck  # tsc --noEmit
-npm run lint       # eslint
-npm run build      # tsc --noEmit && vite build  → dist/ (base-path-relative, subpath-safe)
+npm run dev            # vite dev server
+npm test               # vitest (pure core + UI renderers + happy-dom workbench integration)
+npm run test:coverage  # vitest with v8 coverage over src/core + src/ui
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint
+npm run build          # tsc --noEmit && vite build  → dist/ (base-path-relative, subpath-safe)
 ```
 
 Tests live in `tests/`. The workbench integration test uses a `happy-dom`
 environment (`// @vitest-environment happy-dom`) to drive the real DOM; every
-other test runs in plain node.
+other test runs in plain node. `tests/property.test.ts` uses `fast-check` to
+assert the totality/range invariants of the parser and analyzer across random
+input. Core-logic line coverage sits at ~99%.
 
 ## Key invariants
 
