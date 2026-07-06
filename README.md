@@ -14,8 +14,8 @@ model *statically*, entirely in your browser.
 
 > ⚡ **The wow:** paste a real-world Dockerfile and Layerlens instantly highlights the
 > cache-busting chain — the exact `COPY . .` that invalidates your dependency install on every
-> code change — and shows the one-line reorder that fixes it, with the estimated rebuild-time
-> saved.
+> code change — and shows the one-line reorder that fixes it, with the relative weight the fix
+> keeps cached.
 
 ---
 
@@ -41,7 +41,7 @@ build slow again?" Layerlens makes the invisible build model **visible**.
 - **Models the cache chain** — for any change (a source file, a build arg), which layers stay
   cached and which rebuild, cascading downstream exactly as Docker would.
 - **Suggests fixes** — concrete, ranked reorderings and rewrites ("move `COPY package.json`
-  above `RUN npm ci`") with the estimated impact on rebuild time and image size.
+  above `RUN npm ci`") with the relative size/cache weight each fix keeps cached or trims.
 - **Visualizes** all of it as a schematic: a stacked layer diagram you can hover to trace the
   cache cascade.
 
