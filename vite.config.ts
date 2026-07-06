@@ -13,5 +13,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      // The product's logic is the core pipeline and the UI helpers; type-only
+      // and entry files carry no branches worth a coverage number.
+      include: ['src/core/**', 'src/ui/**'],
+      exclude: ['src/core/types.ts'],
+      reporter: ['text', 'html'],
+    },
   },
 });
