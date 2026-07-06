@@ -48,7 +48,8 @@ export function parseDockerfile(source: string): ParsedDockerfile {
   const physical = source.split(/\r?\n/).map((text, i) => ({ text, line: i + 1 }));
 
   const escapeChar = detectEscapeChar(physical);
-  const logical = joinContinuations(physical, escapeChar, warnings);
+  const collapsed = collectHeredocs(physical, warnings);
+  const logical = joinContinuations(collapsed, escapeChar, warnings);
 
   const instructions: Instruction[] = [];
   let stage = -1;
@@ -95,6 +96,83 @@ function detectEscapeChar(lines: RawLine[]): string {
     if (!/^#\s*\w+\s*=/.test(trimmed)) break;
   }
   return '\\';
+}
+
+/** A heredoc redirect on an instruction line: `<<EOF`, `<<-EOF`, `<<"EOF"`. */
+const HEREDOC = /<<(-?)(["']?)([A-Za-z_][A-Za-z0-9_]*)\2/g;
+
+interface Heredoc {
+  readonly word: string;
+  readonly stripTabs: boolean;
+}
+
+/** Every heredoc delimiter declared on one instruction line, in order. */
+function heredocDelims(text: string): Heredoc[] {
+  const delims: Heredoc[] = [];
+  HEREDOC.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HEREDOC.exec(text)) !== null) {
+    delims.push({ word: m[3], stripTabs: m[1] === '-' });
+  }
+  return delims;
+}
+
+/**
+ * BuildKit heredocs (`RUN <<EOF … EOF`) span multiple physical lines whose body
+ * is literal shell, not further Dockerfile instructions. Fold each heredoc's
+ * body into its opening line so the rest of the parser sees one instruction —
+ * otherwise the body lines parse as bogus instructions (spurious warnings) and
+ * the install inside them escapes the weight model. Runs before continuation
+ * joining. A line may open several heredocs; their bodies close in order.
+ */
+function collectHeredocs(lines: RawLine[], warnings: ParseWarning[]): RawLine[] {
+  const out: RawLine[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const { text, line } = lines[i];
+    // Comments and lines without a heredoc redirect pass through untouched.
+    if (/^\s*#/.test(text)) {
+      out.push(lines[i]);
+      continue;
+    }
+    const delims = heredocDelims(text);
+    if (delims.length === 0) {
+      out.push(lines[i]);
+      continue;
+    }
+
+    const body: string[] = [];
+    let cursor = i + 1;
+    let unterminated = false;
+    for (const d of delims) {
+      let closed = false;
+      while (cursor < lines.length) {
+        const raw = lines[cursor].text;
+        cursor += 1;
+        const candidate = d.stripTabs ? raw.replace(/^\t+/, '') : raw;
+        if (candidate.trim() === d.word) {
+          closed = true;
+          break;
+        }
+        body.push(d.stripTabs ? raw.replace(/^\t+/, '') : raw);
+      }
+      if (!closed) {
+        unterminated = true;
+        break;
+      }
+    }
+    if (unterminated) {
+      warnings.push({ line, message: `unterminated heredoc (expected \`${delims[0].word}\`)` });
+    }
+
+    // Rebuild the instruction: drop the `<<DELIM` operators, append the body so
+    // detectors (heavy install, etc.) still see the commands. Blank/`#` body
+    // lines are literal here, so they must not be dropped later.
+    const opener = text.replace(HEREDOC, '').replace(/\s+/g, ' ').trim();
+    const folded = [opener, ...body.map((b) => b.trim()).filter((b) => b !== '')].join(' ').trim();
+    out.push({ text: folded, line });
+    i = cursor - 1;
+  }
+  return out;
 }
 
 /**
