@@ -52,19 +52,40 @@ build slow again?" Layerlens makes the invisible build model **visible**.
 - **Vite** for the static web build; **Vitest** for tests.
 - Ships as a single self-contained static site — hostable under any base path.
 
-## Status
+## Using it
 
-Early. This repo currently holds the plan and the scaffold. See [`docs/VISION.md`](docs/VISION.md)
-for the design and [`docs/BACKLOG.md`](docs/BACKLOG.md) for the epic/story breakdown.
+Open the app and you get a two-pane workbench:
+
+- **Left — the editor.** A line-numbered Dockerfile editor, seeded with a sample. Type or paste
+  and the analysis re-renders live. Garbage input surfaces a parse notice, never a blank page.
+  One-click **examples** (Node, Python, Go multi-stage) load into the editor.
+- **Right — the schematic.** The layer stack, grouped and labeled by build stage, each bar sized
+  by relative weight and tinted by cache state. Two headline metrics — **relative image weight**
+  and **% that rebuilds on a routine source edit** — roll to their values.
+- **Hover a layer** to run the cache-cascade sweep: every downstream layer that layer's change
+  would invalidate lights up amber, and the wasted-cache metric updates to match. Optional
+  synth SFX (off by default, toggle persisted) tick and clunk as the cache breaks.
+- **Suggestions** dock beneath the stack as margin annotations tied to their line — the exact
+  reorder to make, ranked by severity, with an estimated saving computed from the size model.
+
+The ruleset covers `COPY`-before-install, uncleaned `apt` lists, order-sensitive installs,
+avoidable `ADD`, floating/`latest` base images, and missing-`.dockerignore` hints — and stays
+silent on a clean, well-ordered Dockerfile.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev      # local dev server
-npm test         # run the unit tests
-npm run build    # produce the static site in dist/
+npm run dev        # local dev server
+npm test           # unit tests (core + UI renderers + happy-dom workbench integration)
+npm run typecheck  # tsc --noEmit
+npm run lint       # eslint
+npm run build      # produce the static site in dist/ (subpath-safe)
 ```
+
+See [`docs/VISION.md`](docs/VISION.md) for the design rationale,
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the codebase map, and
+[`docs/BACKLOG.md`](docs/BACKLOG.md) for the epic/story breakdown.
 
 ## License
 
