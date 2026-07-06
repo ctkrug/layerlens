@@ -50,5 +50,24 @@ describe('analyzeSource', () => {
     const a = analyzeSource('');
     expect(a.layers).toHaveLength(0);
     expect(a.wastedCacheRatio).toBe(0);
+    expect(a.imageWeight).toBe(0);
+    expect(a.sourceEditCascade).toEqual([]);
+  });
+
+  it('counts only the final stage toward image weight in a multi-stage build', () => {
+    const src = `FROM golang:1.22 AS build\nWORKDIR /src\nCOPY . .\nRUN go build -o /bin/app ./cmd\n\nFROM gcr.io/distroless/base\nCOPY --from=build /bin/app /app\nENTRYPOINT ["/app"]\n`;
+    const a = analyzeSource(src);
+    // Final stage carries only the single COPY --from; the heavy build-stage
+    // COPY/RUN weights are discarded from the shipped image.
+    expect(a.imageWeight).toBeLessThan(a.totalWeight);
+    expect(a.imageWeight).toBeGreaterThan(0);
+  });
+
+  it('propagates a source edit across COPY --from into the final stage', () => {
+    const src = `FROM golang:1.22 AS build\nWORKDIR /src\nCOPY . .\nRUN go build -o /bin/app ./cmd\n\nFROM alpine\nCOPY --from=build /bin/app /app\nENTRYPOINT ["/app"]\n`;
+    const a = analyzeSource(src);
+    const crossCopy = a.layers.find((l) => /--from=build/.test(l.instruction.args))!;
+    expect(crossCopy.rebuildsOnSourceEdit).toBe(true);
+    expect(a.wastedCacheRatio).toBeGreaterThan(0);
   });
 });
