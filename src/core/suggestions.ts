@@ -96,29 +96,29 @@ export function detectOrderSensitivity(layers: Layer[]): Suggestion[] {
  */
 export function detectCopyBeforeInstall(layers: Layer[]): Suggestion[] {
   const out: Suggestion[] = [];
-  const broadCopyIdx = layers.findIndex(
-    (l) => (l.instruction.keyword === 'COPY' || l.instruction.keyword === 'ADD') && isBroadCopy(l.instruction.args),
-  );
-  if (broadCopyIdx < 0) return out;
-  const broad = layers[broadCopyIdx].instruction;
-
-  for (let i = broadCopyIdx + 1; i < layers.length; i++) {
-    const inst = layers[i].instruction;
-    if (inst.stage !== broad.stage) break; // a later stage restarts the cache lineage
-    if (inst.keyword === 'RUN' && DEP_INSTALL.test(inst.args)) {
-      out.push({
-        id: 'copy-before-install',
-        severity: 'high',
-        title: 'Dependency install runs after a broad COPY — cache is wasted',
-        line: broad.line,
-        estimatedSaving: layers[i].weight,
-        detail:
-          `The \`${broad.keyword} ${short(broad.args)}\` on line ${broad.line} invalidates the ` +
-          `install on line ${inst.line} whenever any source file changes. Copy only the dependency ` +
-          `manifest first, run the install, then copy the rest — so the install layer (relative ` +
-          `weight ${layers[i].weight}) stays cached across code edits.`,
-      });
-      break;
+  // Each stage has its own cache lineage, so check every stage's first broad
+  // COPY — not just the first one in the file — for a following dep install.
+  const broadByStage = firstBroadCopyByStage(layers);
+  for (const [stage, broadCopyIdx] of broadByStage) {
+    const broad = layers[broadCopyIdx].instruction;
+    for (let i = broadCopyIdx + 1; i < layers.length; i++) {
+      const inst = layers[i].instruction;
+      if (inst.stage !== stage) break; // a later stage restarts the cache lineage
+      if (inst.keyword === 'RUN' && DEP_INSTALL.test(inst.args)) {
+        out.push({
+          id: 'copy-before-install',
+          severity: 'high',
+          title: 'Dependency install runs after a broad COPY — cache is wasted',
+          line: broad.line,
+          estimatedSaving: layers[i].weight,
+          detail:
+            `The \`${broad.keyword} ${short(broad.args)}\` on line ${broad.line} invalidates the ` +
+            `install on line ${inst.line} whenever any source file changes. Copy only the dependency ` +
+            `manifest first, run the install, then copy the rest — so the install layer (relative ` +
+            `weight ${layers[i].weight}) stays cached across code edits.`,
+        });
+        break;
+      }
     }
   }
   return out;
