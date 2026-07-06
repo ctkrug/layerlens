@@ -40,6 +40,7 @@ export function buildSuggestions(layers: Layer[]): Suggestion[] {
     ...detectOrderSensitivity(layers),
     ...detectAvoidableAdd(layers),
     ...detectFloatingBaseImage(layers),
+    ...detectMissingDockerignore(layers),
   ];
   return out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
@@ -217,6 +218,32 @@ export function detectFloatingBaseImage(layers: Layer[]): Suggestion[] {
     });
   }
   return out;
+}
+
+/**
+ * A broad `COPY . .` warrants a `.dockerignore`. We only see the Dockerfile
+ * text, not the repo, so this is a hint (lowest severity) rather than a
+ * confirmed defect: without an ignore file, `node_modules`, `.git`, and build
+ * output get copied in, bloating the image and busting the cache needlessly.
+ */
+export function detectMissingDockerignore(layers: Layer[]): Suggestion[] {
+  const broad = layers.find(
+    (l) => (l.instruction.keyword === 'COPY' || l.instruction.keyword === 'ADD') && isBroadCopy(l.instruction.args),
+  );
+  if (!broad) return [];
+  const i = broad.instruction;
+  return [
+    {
+      id: 'missing-dockerignore',
+      severity: 'low',
+      title: 'Broad COPY — make sure a .dockerignore exists',
+      line: i.line,
+      detail:
+        `\`${i.keyword} ${short(i.args)}\` on line ${i.line} copies the whole build context. ` +
+        `Add a \`.dockerignore\` (e.g. node_modules, .git, dist, .env) so local clutter neither ` +
+        `bloats the image nor invalidates the cache on unrelated changes.`,
+    },
+  ];
 }
 
 export function short(s: string, max = 30): string {
