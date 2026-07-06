@@ -80,6 +80,16 @@ describe('floating base image', () => {
     const src = 'FROM registry.internal:5000/team/app:1.4\n';
     expect(detectFloatingBaseImage(buildLayers(parseDockerfile(src).instructions))).toHaveLength(0);
   });
+
+  it('reads past a --platform flag to the real image ref', () => {
+    const pinned = 'FROM --platform=$BUILDPLATFORM golang:1.21 AS build\n';
+    expect(detectFloatingBaseImage(buildLayers(parseDockerfile(pinned).instructions))).toHaveLength(0);
+    const floating = 'FROM --platform=linux/amd64 golang AS build\n';
+    const s = detectFloatingBaseImage(buildLayers(parseDockerfile(floating).instructions));
+    expect(s).toHaveLength(1);
+    expect(s[0].detail).toContain('golang');
+    expect(s[0].detail).not.toContain('--platform');
+  });
 });
 
 describe('missing .dockerignore hint', () => {
