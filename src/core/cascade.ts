@@ -67,10 +67,10 @@ export function computeCascade(layers: Layer[], seeds: number[]): Set<number> {
   while (changed) {
     changed = false;
     for (const l of layers) {
-      const from = stageFrom.get(l.instruction.stage);
-      if (from === undefined || l.index < from) continue; // not (yet) invalid
       if (l.instruction.keyword !== 'COPY') continue;
       const target = crossStageTarget(l.instruction.args, names);
+      // A COPY --from busts when the stage it pulls from was invalidated, which
+      // in turn invalidates this layer and everything downstream of it.
       if (target !== null && stageFrom.has(target) && seed(l.index)) changed = true;
     }
   }
