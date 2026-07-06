@@ -38,6 +38,19 @@ export function copySources(args: string): string[] {
 }
 
 /**
+ * The base-image reference of a `FROM`, skipping any leading flags such as
+ * `--platform=…`. `FROM --platform=x node:20 AS build` -> "node:20"; the
+ * trailing `AS <name>` is not a flag, so the first non-flag token is the image.
+ */
+export function baseImageRef(args: string): string {
+  for (const t of args.split(/\s+/)) {
+    if (t.length === 0 || t.startsWith('--')) continue;
+    return t;
+  }
+  return '';
+}
+
+/**
  * True when a COPY/ADD pulls in a broad context — a `.`/`./` source or a glob.
  * Only the sources are considered, never the destination (a `.` dest is normal).
  */

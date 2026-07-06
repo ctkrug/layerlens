@@ -7,7 +7,7 @@
 // that must produce nothing (no false positives).
 
 import type { Layer } from './types';
-import { isBroadCopy, copySources } from './layers';
+import { isBroadCopy, copySources, baseImageRef } from './layers';
 
 export type Severity = 'high' | 'medium' | 'low';
 
@@ -197,7 +197,7 @@ export function detectFloatingBaseImage(layers: Layer[]): Suggestion[] {
   for (const l of layers) {
     const i = l.instruction;
     if (i.keyword !== 'FROM') continue;
-    const ref = i.args.split(/\s+/)[0] ?? '';
+    const ref = baseImageRef(i.args);
     const name = ref.toLowerCase();
     if (name === '' || name === 'scratch' || aliases.has(name)) continue;
     // Only the final path segment can carry a tag/digest (earlier ':' is a port).

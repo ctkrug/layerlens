@@ -5,7 +5,7 @@
 // controller (workbench.ts) thin: it just swaps innerHTML and wires events.
 
 import type { Analysis, LayerAnalysis } from '../core';
-import { stageNames, crossStageTarget } from '../core';
+import { stageNames, crossStageTarget, baseImageRef } from '../core';
 import { escapeHtml, truncate, toPercent, pluralize, barPercent } from './format';
 
 /** Human label for a build stage: its `AS` alias, base image, or ordinal. */
@@ -15,7 +15,7 @@ export function stageLabel(a: Analysis, stage: number): string {
   const args = from.instruction.args;
   const alias = /\bAS\s+(\S+)/i.exec(args);
   if (alias) return alias[1];
-  const image = args.split(/\s+/)[0] ?? '';
+  const image = baseImageRef(args);
   return image || `stage ${stage}`;
 }
 
