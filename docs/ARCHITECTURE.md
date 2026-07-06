@@ -25,7 +25,7 @@ core stage is independently unit-tested.
 | File | Responsibility |
 |------|----------------|
 | `types.ts` | Domain types: `Instruction`, `Layer`, `ParsedDockerfile`. |
-| `parser.ts` | Text → `Instruction[]`. Joins line continuations, honors the `escape` directive, drops comments, tracks multi-stage `FROM` boundaries. Total (never throws; malformed input → warnings). |
+| `parser.ts` | Text → `Instruction[]`. Joins line continuations, honors the `escape` directive, folds BuildKit heredoc bodies (`RUN <<EOF … EOF`, `<<-`) into their instruction, drops comments, tracks multi-stage `FROM` boundaries. Total (never throws; malformed input → warnings). |
 | `layers.ts` | `Instruction` → `Layer` with a heuristic relative **size weight** (package installs and broad copies dominate; metadata ≈ 0). Also `isBroadCopy`, `copySources`, and `baseImageRef` (the `FROM` image, skipping `--platform`/flags). |
 | `cascade.ts` | `computeCascade(layers, seeds)` — the cache-invalidation model: downstream within a stage, and across stages via `COPY --from` edges. Shared by the metric and the UI hover sweep. |
 | `suggestions.ts` | The ranked fix ruleset. Each detector is pure and named-exported for testing. Rules: `copy-before-install`, `apt-no-clean`, `order-sensitivity`, `avoidable-add`, `floating-base-image`, `missing-dockerignore`. |
