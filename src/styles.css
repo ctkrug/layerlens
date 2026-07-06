@@ -84,11 +84,40 @@ body {
   font-size: 13px;
 }
 
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .examples {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+.sound-toggle {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctrl);
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+  transition: color 160ms ease-out, border-color 160ms ease-out;
+}
+.sound-toggle[data-on="true"] {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.sound-toggle:hover {
+  color: var(--ink);
+}
+.sound-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 .examples-label {
   color: var(--ink-muted);

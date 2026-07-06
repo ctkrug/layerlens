@@ -12,6 +12,8 @@ import { SAMPLE_DOCKERFILE } from '../sample';
 import { renderMetrics, renderStack, renderSuggestions, renderWarnings } from './render';
 import { rollNumber } from './counter';
 import { toPercent } from './format';
+import { createSfx } from './sfx';
+import type { Sfx } from './sfx';
 
 interface Refs {
   textarea: HTMLTextAreaElement;
@@ -26,6 +28,8 @@ interface Refs {
 export function mountWorkbench(root: HTMLElement): void {
   root.innerHTML = shell();
   const refs = collectRefs(root);
+  const sfx = createSfx();
+  wireSoundToggle(root, sfx);
   let current: Analysis = analyzeSource(SAMPLE_DOCKERFILE);
   // Previous metric values so the counters roll from the last analysis (or 0 on
   // first paint) rather than snapping — the re-rendered HTML already holds the
@@ -41,7 +45,7 @@ export function mountWorkbench(root: HTMLElement): void {
     syncGutter(refs);
     rollMetrics(refs, current, prev);
     prev = { weight: current.imageWeight, wasted: toPercent(current.wastedCacheRatio), stages: current.stageCount };
-    wireLayerHover(refs, () => current);
+    wireLayerHover(refs, () => current, sfx);
   };
 
   refs.textarea.value = SAMPLE_DOCKERFILE;
@@ -71,7 +75,7 @@ function roll(scope: HTMLElement, metric: string, to: number, from: number): voi
  * change would invalidate (via the shared cascade model) and updates the wasted
  * metric to that hovered cascade, restoring on leave.
  */
-function wireLayerHover(refs: Refs, getAnalysis: () => Analysis): void {
+function wireLayerHover(refs: Refs, getAnalysis: () => Analysis, sfx: Sfx): void {
   const rows = [...refs.stack.querySelectorAll<HTMLElement>('.layer')];
   const wastedNum = refs.metrics.querySelector<HTMLElement>('[data-metric="wasted"] .num');
   const baseWasted = toPercent(getAnalysis().wastedCacheRatio);
@@ -86,6 +90,8 @@ function wireLayerHover(refs: Refs, getAnalysis: () => Analysis): void {
       if (hit.has(i)) weight += a.layers[i]?.weight ?? 0;
     }
     if (wastedNum) wastedNum.textContent = String(a.totalWeight > 0 ? toPercent(weight / a.totalWeight) : 0);
+    sfx.tick();
+    if (hit.size > 1) sfx.clunk(); // a real cascade downstream — the cache "breaks"
   };
   const leave = (): void => {
     for (const r of rows) r.classList.remove('sweep');
@@ -99,6 +105,23 @@ function wireLayerHover(refs: Refs, getAnalysis: () => Analysis): void {
     r.addEventListener('mouseleave', leave);
     r.addEventListener('blur', leave);
   }
+}
+
+/** Wire the sound on/off toggle and reflect its state in the button. */
+function wireSoundToggle(root: HTMLElement, sfx: Sfx): void {
+  const btn = root.querySelector<HTMLButtonElement>('.sound-toggle');
+  if (!btn) return;
+  const paint = (): void => {
+    const on = sfx.enabled();
+    btn.setAttribute('aria-pressed', String(on));
+    btn.dataset.on = String(on);
+    btn.textContent = on ? '♪ sound on' : '♪ sound off';
+  };
+  btn.addEventListener('click', () => {
+    sfx.toggle();
+    paint();
+  });
+  paint();
 }
 
 function wireExamples(root: HTMLElement, refs: Refs, rerender: () => void): void {
@@ -141,8 +164,11 @@ function shell(): string {
         <div class="wordmark">layer<span class="lens">lens</span></div>
         <p class="tagline">Paste a Dockerfile — see the layer stack, the cache cascade, and where to shrink it.</p>
       </div>
-      <div class="examples" role="group" aria-label="Load an example Dockerfile">
-        <span class="examples-label">try:</span>${examples}
+      <div class="controls">
+        <div class="examples" role="group" aria-label="Load an example Dockerfile">
+          <span class="examples-label">try:</span>${examples}
+        </div>
+        <button type="button" class="sound-toggle" aria-pressed="false" aria-label="Toggle sound effects">♪ sound off</button>
       </div>
     </header>
     <main class="workbench">

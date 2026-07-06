@@ -63,6 +63,15 @@ describe('workbench', () => {
     expect(root.querySelectorAll('.stage').length).toBe(2);
   });
 
+  it('toggles the sound control and reflects state via aria-pressed', () => {
+    const root = mount();
+    const btn = root.querySelector<HTMLButtonElement>('.sound-toggle')!;
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    btn.click();
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.dataset.on).toBe('true');
+  });
+
   it('runs the cascade sweep when a layer is hovered', () => {
     const root = mount();
     setValue(root, 'FROM node:20\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD ["node"]\n');
