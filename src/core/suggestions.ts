@@ -39,6 +39,7 @@ export function buildSuggestions(layers: Layer[]): Suggestion[] {
     ...detectUncleanedApt(layers),
     ...detectOrderSensitivity(layers),
     ...detectAvoidableAdd(layers),
+    ...detectFloatingBaseImage(layers),
   ];
   return out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
@@ -172,6 +173,47 @@ export function detectAvoidableAdd(layers: Layer[]): Suggestion[] {
         `Line ${i.line} uses \`ADD\` for a local, non-archive path. ADD can fetch URLs and ` +
         `auto-extract archives, which surprises readers; for plain files prefer \`COPY\` — it is ` +
         `explicit and behaves identically here.`,
+    });
+  }
+  return out;
+}
+
+/**
+ * `FROM` on a floating tag — no tag (implies `:latest`) or an explicit
+ * `:latest`. Such builds are not reproducible: a rebuild can silently pull a
+ * different base. Digest-pinned images (`@sha256:…`), `scratch`, and references
+ * to an earlier build stage are all fine and skipped.
+ */
+export function detectFloatingBaseImage(layers: Layer[]): Suggestion[] {
+  const aliases = new Set<string>();
+  for (const l of layers) {
+    if (l.instruction.keyword !== 'FROM') continue;
+    const m = /\bAS\s+(\S+)/i.exec(l.instruction.args);
+    if (m) aliases.add(m[1].toLowerCase());
+  }
+
+  const out: Suggestion[] = [];
+  for (const l of layers) {
+    const i = l.instruction;
+    if (i.keyword !== 'FROM') continue;
+    const ref = i.args.split(/\s+/)[0] ?? '';
+    const name = ref.toLowerCase();
+    if (name === '' || name === 'scratch' || aliases.has(name)) continue;
+    // Only the final path segment can carry a tag/digest (earlier ':' is a port).
+    const lastSeg = ref.split('/').pop()!;
+    if (lastSeg.includes('@')) continue; // pinned by digest
+    const tag = lastSeg.includes(':') ? lastSeg.split(':')[1] : '';
+    if (tag !== '' && tag !== 'latest') continue;
+    out.push({
+      id: 'floating-base-image',
+      severity: 'low',
+      title: 'Base image is not pinned to a version',
+      line: i.line,
+      detail:
+        `\`FROM ${short(ref)}\` on line ${i.line} ` +
+        `${tag === '' ? 'has no tag, so it defaults to :latest' : 'uses :latest'} — a rebuild can ` +
+        `pull a different image without warning. Pin a specific version tag (or a @sha256 digest) ` +
+        `for reproducible builds.`,
     });
   }
   return out;
