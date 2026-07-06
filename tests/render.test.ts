@@ -30,6 +30,13 @@ describe('renderStack', () => {
     expect(html).toContain('build'); // the AS alias label
   });
 
+  it('marks a COPY --from as a cross-stage edge back to its source stage', () => {
+    const html = renderStack(analyzeSource(GO));
+    expect(html).toContain('class="edge"');
+    expect(html).toContain('↖ build'); // the edge points at the build stage
+    expect(html).toMatch(/class="layer[^"]* cross"/); // the row carries the cross marker
+  });
+
   it('escapes instruction text to prevent HTML injection', () => {
     const html = renderStack(analyzeSource('FROM x\nRUN echo "<script>"\n'));
     expect(html).not.toContain('<script>');

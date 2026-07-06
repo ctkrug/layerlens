@@ -5,6 +5,7 @@
 // controller (workbench.ts) thin: it just swaps innerHTML and wires events.
 
 import type { Analysis, LayerAnalysis } from '../core';
+import { stageNames, crossStageTarget } from '../core';
 import { escapeHtml, truncate, toPercent, pluralize, barPercent } from './format';
 
 /** Human label for a build stage: its `AS` alias, base image, or ordinal. */
@@ -37,24 +38,36 @@ export function renderMetrics(a: Analysis): string {
 }
 
 /** One layer row. `data-index` links it to the cascade model for the hover sweep. */
-function renderLayer(l: LayerAnalysis, maxWeight: number): string {
+function renderLayer(l: LayerAnalysis, maxWeight: number, fromLabel: string | null): string {
   const pct = barPercent(l.weight, maxWeight);
   const cache = l.rebuildsOnSourceEdit ? 'rebuilds' : l.kind === 'metadata' ? 'metadata' : 'cached';
   const chip =
     cache === 'rebuilds' ? 'rebuilds on edit' : cache === 'metadata' ? 'metadata' : 'stays cached';
-  return `<button type="button" class="layer ${cache}" data-index="${l.index}"
-      aria-label="Layer ${l.index}: ${escapeHtml(l.instruction.keyword)} — ${escapeHtml(chip)}. ${escapeHtml(l.sizeNote)}">
+  // A COPY --from renders a visible cross-stage edge badge back to its source.
+  const edge = fromLabel
+    ? `<span class="edge" title="pulls from stage ${escapeHtml(fromLabel)}">↖ ${escapeHtml(fromLabel)}</span>`
+    : '';
+  return `<button type="button" class="layer ${cache}${fromLabel ? ' cross' : ''}" data-index="${l.index}"
+      aria-label="Layer ${l.index}: ${escapeHtml(l.instruction.keyword)}${fromLabel ? ` from stage ${escapeHtml(fromLabel)}` : ''} — ${escapeHtml(chip)}. ${escapeHtml(l.sizeNote)}">
       <span class="idx">L${l.index}</span>
-      <span class="instr"><span class="keyword">${escapeHtml(l.instruction.keyword)}</span> ${escapeHtml(truncate(l.instruction.args, 52))}</span>
+      <span class="instr"><span class="keyword">${escapeHtml(l.instruction.keyword)}</span> ${escapeHtml(truncate(l.instruction.args, 52))}${edge}</span>
       <span class="track"><span class="bar" style="width:${pct}%"></span></span>
       <span class="chip">${chip}</span>
     </button>`;
+}
+
+/** Resolve a COPY --from layer to its source-stage label, or null. */
+function crossStageLabel(a: Analysis, l: LayerAnalysis, names: Map<string, number>): string | null {
+  if (l.instruction.keyword !== 'COPY') return null;
+  const target = crossStageTarget(l.instruction.args, names);
+  return target === null ? null : stageLabel(a, target);
 }
 
 /** The layer stack, grouped and labeled by build stage. */
 export function renderStack(a: Analysis): string {
   if (a.layers.length === 0) return renderEmptyStack();
   const maxWeight = Math.max(1, ...a.layers.map((l) => l.weight));
+  const names = stageNames(a.layers);
   const stages = [...new Set(a.layers.map((l) => l.instruction.stage))].sort((x, y) => x - y);
 
   return stages
@@ -65,7 +78,7 @@ export function renderStack(a: Analysis): string {
         ? `<div class="stage-head"><span class="stage-tag">stage ${stage}</span><span class="stage-name">${escapeHtml(stageLabel(a, stage))}</span></div>`
         : '';
       return `<section class="stage" data-stage="${stage}">${header}
-        ${rows.map((l) => renderLayer(l, maxWeight)).join('')}
+        ${rows.map((l) => renderLayer(l, maxWeight, crossStageLabel(a, l, names))).join('')}
       </section>`;
     })
     .join('');
