@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseDockerfile } from '../src/core/parser';
-import { buildLayers, classify, totalWeight } from '../src/core/layers';
+import { buildLayers, classify, totalWeight, isBroadCopy, copySources } from '../src/core/layers';
 
 describe('layer model', () => {
   it('classifies filesystem vs metadata instructions', () => {
@@ -32,6 +32,25 @@ describe('layer model', () => {
     const specific = layers.find((l) => l.instruction.args === 'package.json .')!;
     const broad = layers.find((l) => l.instruction.args === '. .')!;
     expect(broad.weight).toBeGreaterThan(specific.weight);
+  });
+
+  it('treats `.`, `./`, and glob sources as a broad copy', () => {
+    expect(isBroadCopy('. .')).toBe(true);
+    expect(isBroadCopy('./ /app')).toBe(true);
+    expect(isBroadCopy('*.json ./')).toBe(true); // a glob source is broad
+    expect(isBroadCopy('src/**/*.ts /app/')).toBe(true);
+  });
+
+  it('does not treat specific sources or a `.` destination as broad', () => {
+    expect(isBroadCopy('package.json .')).toBe(false); // dest `.` is not a source
+    expect(isBroadCopy('src ./src')).toBe(false);
+    expect(isBroadCopy('--from=build /app/dist /usr/share/nginx/html')).toBe(false);
+  });
+
+  it('copySources drops flags and the destination', () => {
+    expect(copySources('--from=build /a /b /dest')).toEqual(['/a', '/b']);
+    expect(copySources('only-one')).toEqual(['only-one']); // no dest to drop
+    expect(copySources('')).toEqual([]);
   });
 
   it('totalWeight sums layer weights', () => {
