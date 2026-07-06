@@ -1,0 +1,180 @@
+/* Layerlens — blueprint/technical direction. See docs/DESIGN.md for the source
+   of truth on tokens and layout. This is the SCOPE-phase baseline; BUILD stories
+   flesh out the full two-pane workbench. */
+
+:root {
+  --bg: #0b1a2b;
+  --surface-1: #0f2438;
+  --surface-2: #153048;
+  --ink: #e8f1f8;
+  --ink-muted: #8fb0c7;
+  --line: #2b4a66;
+  --accent: #3ad0ff;
+  --accent-2: #7cf0c8;
+  --warn: #ffb347;
+  --danger: #ff6b6b;
+  --radius: 8px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: var(--mono);
+  background-color: var(--bg);
+  /* Faint blueprint grid to the edges — never a flat empty color. */
+  background-image:
+    linear-gradient(rgba(58, 208, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(58, 208, 255, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.wordmark {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+  padding-bottom: 4px;
+}
+.wordmark .lens {
+  color: var(--accent);
+}
+.tagline {
+  color: var(--ink-muted);
+  margin: 12px 0 28px;
+  max-width: 60ch;
+}
+
+.metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.metric {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: var(--shadow);
+}
+.metric .value {
+  font-family: var(--sans);
+  font-size: 24px;
+  font-weight: 700;
+}
+.metric .label {
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.layer {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 5px;
+  padding: 8px 12px;
+  transition: transform 120ms ease-out, border-color 120ms ease-out;
+}
+.layer:hover {
+  transform: translateX(2px);
+}
+.layer.rebuilds {
+  border-left-color: var(--danger);
+}
+.layer .idx {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.layer .instr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layer .keyword {
+  color: var(--accent);
+  font-weight: 600;
+}
+.bar {
+  height: 8px;
+  border-radius: 2px;
+  background: var(--accent);
+  min-width: 4px;
+}
+.layer.rebuilds .bar {
+  background: var(--danger);
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.suggestion {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.suggestion.high {
+  border-left-color: var(--danger);
+}
+.suggestion h3 {
+  font-family: var(--sans);
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.suggestion .sev {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--warn);
+}
+.suggestion.high .sev {
+  color: var(--danger);
+}
+.suggestion p {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+h2 {
+  font-family: var(--sans);
+  font-size: 19px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
