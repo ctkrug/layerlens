@@ -37,8 +37,53 @@ export function buildSuggestions(layers: Layer[]): Suggestion[] {
   const out: Suggestion[] = [
     ...detectCopyBeforeInstall(layers),
     ...detectUncleanedApt(layers),
+    ...detectOrderSensitivity(layers),
   ];
   return out.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+}
+
+/** The earliest broad COPY/ADD index within each stage, keyed by stage. */
+function firstBroadCopyByStage(layers: Layer[]): Map<number, number> {
+  const map = new Map<number, number>();
+  for (const l of layers) {
+    const i = l.instruction;
+    if ((i.keyword === 'COPY' || i.keyword === 'ADD') && isBroadCopy(i.args) && !map.has(i.stage)) {
+      map.set(i.stage, l.index);
+    }
+  }
+  return map;
+}
+
+/**
+ * A rarely-changing heavy install (apt/apk/yum/…, but NOT a dependency manifest
+ * install, which copy-before-install owns) placed *below* a broad COPY: it
+ * rebuilds on every source edit purely because of instruction order. The fix is
+ * to hoist it above the COPY.
+ */
+export function detectOrderSensitivity(layers: Layer[]): Suggestion[] {
+  const out: Suggestion[] = [];
+  const broadByStage = firstBroadCopyByStage(layers);
+  for (const l of layers) {
+    const i = l.instruction;
+    if (i.keyword !== 'RUN' || l.weight < 6) continue; // heavy installs only
+    if (DEP_INSTALL.test(i.args)) continue; // owned by copy-before-install
+    const broad = broadByStage.get(i.stage);
+    if (broad === undefined || l.index <= broad) continue;
+    const copy = layers[broad].instruction;
+    out.push({
+      id: 'order-sensitivity',
+      severity: 'medium',
+      title: 'A rarely-changing install sits below a broad COPY',
+      line: i.line,
+      estimatedSaving: l.weight,
+      detail:
+        `The install on line ${i.line} rebuilds whenever any source file changes, because ` +
+        `\`${copy.keyword} ${short(copy.args)}\` on line ${copy.line} runs first. Move this ` +
+        `install above the broad COPY so it stays cached across code edits ` +
+        `(relative weight ${l.weight}).`,
+    });
+  }
+  return out;
 }
 
 /**
