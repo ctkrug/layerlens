@@ -1,5 +1,7 @@
 # Layerlens
 
+[![CI](https://github.com/ctkrug/layerlens/actions/workflows/ci.yml/badge.svg)](https://github.com/ctkrug/layerlens/actions/workflows/ci.yml)
+
 **Paste a Dockerfile. See exactly how it builds.**
 
 Layerlens is a static analyzer for Dockerfiles. It reads the build the way the Docker
