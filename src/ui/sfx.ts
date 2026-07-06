@@ -37,7 +37,24 @@ function resolveAudioCtor(): AudioCtor | null {
  * Enabled state is read once from storage; default (no stored value) is off.
  */
 export function createSfx(store: KeyValueStore | null = defaultStore()): Sfx {
-  let on = store?.getItem(STORAGE_KEY) === 'on';
+  // Storage access can throw (Safari private mode, disabled cookies), so every
+  // read/write is guarded — a broken store must never wedge the workbench.
+  const read = (): string | null => {
+    try {
+      return store?.getItem(STORAGE_KEY) ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const write = (value: string): void => {
+    try {
+      store?.setItem(STORAGE_KEY, value);
+    } catch {
+      /* storage unavailable — keep the in-memory state only */
+    }
+  };
+
+  let on = read() === 'on';
   const AudioCtor = resolveAudioCtor();
   let ctx: AudioContext | null = null;
   let lastTick = 0;
@@ -80,7 +97,7 @@ export function createSfx(store: KeyValueStore | null = defaultStore()): Sfx {
     enabled: () => on,
     toggle: () => {
       on = !on;
-      store?.setItem(STORAGE_KEY, on ? 'on' : 'off');
+      write(on ? 'on' : 'off');
       return on;
     },
     tick: () => {
