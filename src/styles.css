@@ -542,6 +542,18 @@ body {
   }
 }
 
+/* Touch targets: at least 44px on coarse pointers (phones/tablets). */
+@media (pointer: coarse) {
+  .example,
+  .sound-toggle {
+    min-height: 44px;
+  }
+  .layer {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
