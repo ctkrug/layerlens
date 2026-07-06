@@ -27,6 +27,10 @@ export function mountWorkbench(root: HTMLElement): void {
   root.innerHTML = shell();
   const refs = collectRefs(root);
   let current: Analysis = analyzeSource(SAMPLE_DOCKERFILE);
+  // Previous metric values so the counters roll from the last analysis (or 0 on
+  // first paint) rather than snapping — the re-rendered HTML already holds the
+  // target, so we must remember where we came from.
+  let prev = { weight: 0, wasted: 0, stages: 0 };
 
   const analyzeAndRender = (): void => {
     current = analyzeSource(refs.textarea.value);
@@ -35,7 +39,8 @@ export function mountWorkbench(root: HTMLElement): void {
     refs.suggestions.innerHTML = renderSuggestions(current);
     refs.notice.innerHTML = renderWarnings(current);
     syncGutter(refs);
-    rollMetrics(refs, current);
+    rollMetrics(refs, current, prev);
+    prev = { weight: current.imageWeight, wasted: toPercent(current.wastedCacheRatio), stages: current.stageCount };
     wireLayerHover(refs, () => current);
   };
 
@@ -48,17 +53,17 @@ export function mountWorkbench(root: HTMLElement): void {
   analyzeAndRender();
 }
 
-/** Roll each metric's numeric value up/down to the new analysis. */
-function rollMetrics(refs: Refs, a: Analysis): void {
-  roll(refs.metrics, 'weight', a.imageWeight, (n) => String(n));
-  roll(refs.metrics, 'stages', a.stageCount, (n) => String(n));
+/** Roll each metric's numeric value from the previous analysis to the new one. */
+function rollMetrics(refs: Refs, a: Analysis, prev: { weight: number; wasted: number; stages: number }): void {
+  roll(refs.metrics, 'weight', a.imageWeight, prev.weight);
+  roll(refs.metrics, 'stages', a.stageCount, prev.stages);
   const wastedNum = refs.metrics.querySelector<HTMLElement>('[data-metric="wasted"] .num');
-  if (wastedNum) rollNumber(wastedNum, toPercent(a.wastedCacheRatio), (n) => String(n));
+  if (wastedNum) rollNumber(wastedNum, toPercent(a.wastedCacheRatio), String, { from: prev.wasted });
 }
 
-function roll(scope: HTMLElement, metric: string, to: number, fmt: (n: number) => string): void {
+function roll(scope: HTMLElement, metric: string, to: number, from: number): void {
   const el = scope.querySelector<HTMLElement>(`[data-metric="${metric}"] .value`);
-  if (el) rollNumber(el, to, fmt);
+  if (el) rollNumber(el, to, String, { from });
 }
 
 /**

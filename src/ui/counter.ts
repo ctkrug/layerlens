@@ -23,8 +23,14 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+export interface RollOptions {
+  /** Starting value; defaults to the element's stored `data-value`. */
+  from?: number;
+  durationMs?: number;
+}
+
 /**
- * Animate `el`'s text from its current numeric value to `to` over `durationMs`,
+ * Animate `el`'s text from `opts.from` (or its stored `data-value`) to `to`,
  * formatting each frame with `format`. Snaps immediately under reduced motion or
  * when requestAnimationFrame is unavailable. Returns a cancel function.
  */
@@ -32,9 +38,10 @@ export function rollNumber(
   el: HTMLElement,
   to: number,
   format: (n: number) => string,
-  durationMs = 600,
+  opts: RollOptions = {},
 ): () => void {
-  const from = parseInt(el.dataset.value ?? '0', 10) || 0;
+  const from = opts.from ?? (parseInt(el.dataset.value ?? '0', 10) || 0);
+  const durationMs = opts.durationMs ?? 600;
   el.dataset.value = String(to);
 
   if (from === to || prefersReducedMotion() || typeof requestAnimationFrame !== 'function') {
