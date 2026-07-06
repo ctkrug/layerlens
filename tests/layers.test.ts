@@ -53,6 +53,12 @@ describe('layer model', () => {
     expect(copySources('')).toEqual([]);
   });
 
+  it('weighs a heredoc-bodied install as a heavy layer', () => {
+    const src = 'FROM debian:12\nRUN <<EOT\napt-get update\napt-get install -y curl\nEOT\n';
+    const run = buildLayers(parseDockerfile(src).instructions).find((l) => l.instruction.keyword === 'RUN')!;
+    expect(run.weight).toBeGreaterThanOrEqual(6); // the install in the body is detected
+  });
+
   it('totalWeight sums layer weights', () => {
     const layers = buildLayers(parseDockerfile('FROM x\nCOPY . .\nRUN npm ci\n').instructions);
     expect(totalWeight(layers)).toBe(layers.reduce((s, l) => s + l.weight, 0));

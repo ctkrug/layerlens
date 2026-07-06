@@ -52,4 +52,21 @@ describe('parseDockerfile', () => {
   it('never throws on empty input', () => {
     expect(parseDockerfile('').instructions).toHaveLength(0);
   });
+
+  it('folds a heredoc body into its instruction without spurious warnings', () => {
+    const src = 'FROM debian:12\nRUN <<EOT\napt-get update\napt-get install -y curl\nEOT\nCOPY . .\n';
+    const { instructions, warnings } = parseDockerfile(src);
+    expect(instructions.map((i) => i.keyword)).toEqual(['FROM', 'RUN', 'COPY']);
+    const run = instructions.find((i) => i.keyword === 'RUN')!;
+    expect(run.args).toContain('apt-get install -y curl');
+    expect(warnings).toHaveLength(0); // body lines are not unknown instructions
+  });
+
+  it('honors <<- indented terminators and warns on an unterminated heredoc', () => {
+    const stripped = parseDockerfile('FROM x\nRUN <<-EOT\n\techo hi\n\tEOT\nCMD ["x"]\n');
+    expect(stripped.instructions.map((i) => i.keyword)).toEqual(['FROM', 'RUN', 'CMD']);
+    expect(stripped.warnings).toHaveLength(0);
+    const open = parseDockerfile('FROM x\nRUN <<EOT\nnever closed\n');
+    expect(open.warnings.some((w) => /heredoc/.test(w.message))).toBe(true);
+  });
 });
