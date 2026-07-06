@@ -63,6 +63,15 @@ describe('analyzeSource', () => {
     expect(a.imageWeight).toBeGreaterThan(0);
   });
 
+  it('does not overflow the stack on a pathologically large Dockerfile', () => {
+    // A huge paste must degrade gracefully, never throw — `Math.max(...arr)`
+    // spreads a 150k-element array past the call-argument limit (RangeError).
+    const src = 'FROM alpine\n' + Array.from({ length: 150000 }, () => 'RUN echo x').join('\n');
+    const a = analyzeSource(src);
+    expect(a.layers.length).toBe(150001);
+    expect(a.imageWeight).toBeGreaterThan(0);
+  });
+
   it('propagates a source edit across COPY --from into the final stage', () => {
     const src = `FROM golang:1.22 AS build\nWORKDIR /src\nCOPY . .\nRUN go build -o /bin/app ./cmd\n\nFROM alpine\nCOPY --from=build /bin/app /app\nENTRYPOINT ["/app"]\n`;
     const a = analyzeSource(src);

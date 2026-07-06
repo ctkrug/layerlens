@@ -37,6 +37,12 @@ describe('renderStack', () => {
     expect(html).toMatch(/class="layer[^"]* cross"/); // the row carries the cross marker
   });
 
+  it('renders a pathologically large stack without overflowing the stack', () => {
+    const src = 'FROM alpine\n' + Array.from({ length: 150000 }, () => 'RUN echo x').join('\n');
+    const html = renderStack(analyzeSource(src));
+    expect(html).toContain('data-index="0"');
+  });
+
   it('escapes instruction text to prevent HTML injection', () => {
     const html = renderStack(analyzeSource('FROM x\nRUN echo "<script>"\n'));
     expect(html).not.toContain('<script>');
