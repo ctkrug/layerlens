@@ -46,4 +46,20 @@ describe('createSfx', () => {
     expect(() => sfx.toggle()).not.toThrow();
     expect(sfx.enabled()).toBe(true);
   });
+
+  it('survives a storage that throws (Safari private mode, disabled cookies)', () => {
+    const throwing: KeyValueStore = {
+      getItem: () => {
+        throw new DOMException('denied');
+      },
+      setItem: () => {
+        throw new DOMException('quota');
+      },
+    };
+    let sfx!: ReturnType<typeof createSfx>;
+    expect(() => (sfx = createSfx(throwing))).not.toThrow();
+    expect(sfx.enabled()).toBe(false); // unreadable storage -> off
+    expect(() => sfx.toggle()).not.toThrow(); // unwritable storage -> still flips in memory
+    expect(sfx.enabled()).toBe(true);
+  });
 });
