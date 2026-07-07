@@ -7,7 +7,7 @@
 
 import { analyzeSource, computeCascade } from '../core';
 import type { Analysis } from '../core';
-import { EXAMPLES } from '../examples';
+import { EXAMPLES, findExample } from '../examples';
 import { SAMPLE_DOCKERFILE } from '../sample';
 import { renderMetrics, renderStack, renderSuggestions, renderWarnings } from './render';
 import { rollNumber } from './counter';
@@ -127,7 +127,7 @@ function wireSoundToggle(root: HTMLElement, sfx: Sfx): void {
 function wireExamples(root: HTMLElement, refs: Refs, rerender: () => void): void {
   for (const btn of root.querySelectorAll<HTMLElement>('[data-example]')) {
     btn.addEventListener('click', () => {
-      const ex = EXAMPLES.find((e) => e.id === btn.dataset.example);
+      const ex = findExample(btn.dataset.example ?? '');
       if (!ex) return;
       refs.textarea.value = ex.dockerfile;
       rerender();
