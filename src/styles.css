@@ -567,6 +567,103 @@ body {
   }
 }
 
+/* ---- Below-the-fold reference copy ---------------------------------- */
+
+.about {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  /* Continue the blueprint grid seam under the reference section. */
+  background-image: linear-gradient(rgba(58, 208, 255, 0.03), transparent 240px);
+}
+.about-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px clamp(16px, 3vw, 32px) 56px;
+}
+.about h2 {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 32px 0 10px;
+  color: var(--ink);
+}
+.about h2:first-child {
+  margin-top: 0;
+}
+.about p,
+.about li,
+.about dd {
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 68ch;
+}
+.about ol {
+  margin: 0;
+  padding-left: 20px;
+}
+.about li {
+  margin: 6px 0;
+}
+.about code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  padding: 1px 5px;
+}
+.faq {
+  margin: 4px 0 0;
+}
+.faq dt {
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 15px;
+  margin-top: 20px;
+}
+.faq dd {
+  margin: 6px 0 0;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.site-footer a {
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 160ms ease-out;
+}
+.gh-link {
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--accent);
+}
+.gh-link:hover {
+  color: var(--ink);
+}
+.portfolio-link {
+  color: var(--ink-muted);
+}
+.portfolio-link:hover {
+  color: var(--accent-2);
+}
+.site-footer a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: var(--r-chip);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

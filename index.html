@@ -3,10 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Layerlens — see how your Dockerfile builds</title>
+    <title>Layerlens — See which Docker layers rebuild, and why</title>
     <meta
       name="description"
-      content="Paste a Dockerfile and see a visual layer-by-layer size and cache-invalidation breakdown, with concrete reordering suggestions."
+      content="Paste a Dockerfile and see which layers rebuild on a code change, why your cache breaks, and the exact reorder that fixes it. Runs in your browser, nothing uploaded."
+    />
+    <meta property="og:title" content="Layerlens — See which Docker layers rebuild, and why" />
+    <meta
+      property="og:description"
+      content="A static Dockerfile analyzer: visual layer stack, cache-cascade view, and ranked reordering fixes. Runs entirely in your browser."
     />
     <!-- Favicon: stacked layer bars, one flagged amber. Inline SVG, no binary asset. -->
     <link
@@ -22,6 +27,89 @@
   </head>
   <body>
     <div id="app"></div>
+
+    <!-- Below-the-fold reference copy: useful, searchable, styled to match the app.
+         Present in the static HTML so it works without JavaScript and can be indexed. -->
+    <section class="about" aria-label="About Layerlens">
+      <div class="about-inner">
+        <h2>What Layerlens does</h2>
+        <p>
+          Layerlens is a static Dockerfile analyzer. It parses a Dockerfile into its instruction
+          stream, maps each instruction to the layer it produces, and models Docker's build cache
+          without ever running <code>docker build</code>. The result is a visual layer stack that
+          shows the relative weight of each layer, which layers rebuild when you change a source
+          file, and a ranked list of concrete fixes. Everything runs in your browser on the text
+          you paste, so it is safe for private and proprietary Dockerfiles.
+        </p>
+
+        <h2>How to use it</h2>
+        <ol>
+          <li>Paste your Dockerfile into the editor on the left, or load one of the examples.</li>
+          <li>
+            Read the two headline numbers: the relative image weight, and the percent of that
+            weight that rebuilds on a routine source edit. A high rebuild percentage means your
+            cache is working against you.
+          </li>
+          <li>
+            Hover a layer to see the cache cascade: every layer downstream that the change would
+            invalidate lights up. This is how you spot the one instruction that busts an expensive
+            install.
+          </li>
+          <li>
+            Apply the ranked suggestions. Each names the exact line and the change to make, such as
+            copying your <code>package.json</code> before running <code>npm ci</code>.
+          </li>
+        </ol>
+
+        <h2>Frequently asked questions</h2>
+        <dl class="faq">
+          <dt>Does Layerlens run my Docker build or upload my Dockerfile?</dt>
+          <dd>
+            No. It never runs <code>docker build</code> and needs no daemon. All parsing and
+            analysis happen locally in your browser on the text you paste, so nothing leaves your
+            machine.
+          </dd>
+
+          <dt>Why does my dependency install rebuild on every code change?</dt>
+          <dd>
+            Almost always because a broad <code>COPY . .</code> sits above the install. Docker keys
+            each layer on the ones before it, so copying your whole source first invalidates the
+            install layer on any file change. Copy only the dependency manifest first, run the
+            install, then copy the rest.
+          </dd>
+
+          <dt>Are the sizes real megabytes?</dt>
+          <dd>
+            No. Real byte sizes require an actual build. Layerlens reports honest <em>relative</em>
+            weights inferred from instruction semantics: package installs and broad copies dominate,
+            metadata instructions weigh almost nothing. The numbers are meaningful next to each
+            other, not as absolute sizes.
+          </dd>
+
+          <dt>Does it understand multi-stage builds?</dt>
+          <dd>
+            Yes. It tracks <code>FROM ... AS</code> stage boundaries and <code>COPY --from=</code>
+            edges, so a change in a build stage cascades into every stage that copies from it.
+          </dd>
+
+          <dt>What does it check for?</dt>
+          <dd>
+            Dependency installs placed after a broad copy, <code>apt</code> installs that never
+            clean their package lists, order-sensitive heavy installs, <code>ADD</code> used where
+            <code>COPY</code> is safer, floating <code>:latest</code> base images, and broad copies
+            missing a <code>.dockerignore</code>.
+          </dd>
+        </dl>
+
+        <footer class="site-footer">
+          <a class="gh-link" href="https://github.com/ctkrug/layerlens">View source on GitHub</a>
+          <a class="portfolio-link" href="https://apps.charliekrug.com"
+            >More by Charlie Krug → apps.charliekrug.com</a
+          >
+        </footer>
+      </div>
+    </section>
+
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
