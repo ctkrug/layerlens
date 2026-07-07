@@ -162,7 +162,7 @@ function shell(): string {
     <header class="topbar">
       <div class="brand">
         <div class="wordmark">layer<span class="lens">lens</span></div>
-        <p class="tagline">Paste a Dockerfile — see the layer stack, the cache cascade, and where to shrink it.</p>
+        <p class="tagline">Paste a Dockerfile. See which layers rebuild on a code change, and the reorder that keeps them cached.</p>
       </div>
       <div class="controls">
         <div class="examples" role="group" aria-label="Load an example Dockerfile">
